@@ -1,0 +1,52 @@
+#!/bin/zsh
+
+# Network details
+SSID1=""
+PASSWORD1=""
+
+SSID2=""
+PASSWORD2=""
+
+# NOTE: Do not forget to put networks before putting this in automator
+
+# Detect the wifi interface
+WIFI_IF=$(networksetup -listallhardwareports | awk '/Wi-Fi/{getline; print $2}')
+
+#  If no wifi hardware is found
+if [[ -z "$WIFI_IF" ]]; then
+    echo "Error: No Wi-Fi interface found."
+    exit 1
+fi
+
+echo "Detected Wi-Fi interface: $WIFI_IF"
+
+# Check current connection status
+CURRENT_SSID=$(networksetup -getairportnetwork "$WIFI_IF" | awk -F': ' '{print $2}')
+
+if [[ "$CURRENT_SSID" == "$SSID1" || "$CURRENT_SSID" == "$SSID2" ]]; then
+    echo "Already connected to '$CURRENT_SSID'. Leaving connection untouched."
+    exit 0
+fi
+
+echo "Not connected to a target network. Attempting to connect to '$SSID1'..."
+
+# Try connecting to the primary network
+networksetup -setairportnetwork "$WIFI_IF" "$SSID1" "$PASSWORD1"
+
+if [[ $? -eq 0 ]]; then
+    echo "Successfully connected to '$SSID1'."
+    exit 0
+else
+    echo "Failed to connect to '$SSID1'. Falling back to '$SSID2'..."
+    
+    # Fallback to secondary network
+    networksetup -setairportnetwork "$WIFI_IF" "$SSID2" "$PASSWORD2"
+    
+    if [[ $? -eq 0 ]]; then
+        echo "Successfully connected to '$SSID2'."
+        exit 0
+    else
+        echo "Error: Failed to connect to both '$SSID1' and '$SSID2'."
+        exit 1
+    fi
+fi
